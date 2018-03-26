@@ -262,15 +262,35 @@ let counterGenerator = (firstPos) => {
 
 // version generator
 let versionGenerator = (startingVer) => {
-  let verArray = startingVer.split('.') // Split on '.' (x.y.z)
-  let patchArr = verArray[2].split('-') // Split on z (z-SNAPSHOT)
+  let [verArray, build] = startingVer.split('-')
+  let [major, minor, patch] = verArray.split('.')
 
-  let major = parseInt(verArray[0]) || 0 // (x)
-  let minor = parseInt(verArray[1]) || 0 // (y)
-  let patch = parseInt(patchArr[0]) || 0 // (z)
-  let isSnapshot = patchArr.length > 1   // (z-SNAPSHOT)?
+  major = major
+          ? major
+          : 0;
+  minor = minor
+          ? minor
+          : 0;
+  patch = patch
+          ? patch
+          : 0;
+  build = build
+          ? build
+          : 0;
+
+  let prod = () => {
+    return major +
+          '.' + minor +
+          (patch == 0
+          ? ''
+          : '.' + patch)
+  }
+
   let current = () => {
-    return major+'.'+minor+'.'+patch + (isSnapshot ? '-SNAPSHOT' : '')
+    return prod() +
+          (build == 0
+          ? ''
+          : '-' + build)
   }
 
   return {
@@ -279,24 +299,25 @@ let versionGenerator = (startingVer) => {
       ++major
       minor = 0
       patch = 0
-      isSnapshot = false
+      build = 0
       return current()
     },
     minor: () => {
       ++minor
       patch = 0
-      isSnapshot = false
+      build = 0
       return current()
     },
     patch: () => {
       ++patch
-      isSnapshot = false
+      build = 0
       return current()
     },
-    snapshot: () => {
-      isSnapshot = true
+    build: () => {
+      ++build
       return current()
     },
+    prod: prod,
   }
 }
 
@@ -314,7 +335,7 @@ class master {
         displayTagBox: true
       }
     }).commit();
-    this.version = versionGenerator("0.0.0");
+    this.version = versionGenerator("1.1");
     this.develop = this.own.branch({
       name: "develop",
       column: 5,
@@ -330,12 +351,11 @@ class master {
     this.develop.features = [];
     this.develop.featureCounter = counterGenerator(1)
     this.develop.release;
-    this.allowsSnapshots = false;
   }
 
   startProduction() {
     this.production = this.own.branch({ // Check the versions when creating to ensure they are different.
-          name: "production/v" + this.version.curr(), // TODO add versioning to each commit, late created prods show wrong version
+          name: "production/v" + this.version.prod(), // TODO add versioning to each commit, late created prods show wrong version
           column: 2,
           color: "#E55934",
           commitDefaultOptions: {
@@ -345,6 +365,7 @@ class master {
           }
         }
       ).commit();
+      this.version.minor()
   }
   
   startFeature() {
@@ -379,11 +400,9 @@ class master {
   }
 
   closeFeature() {
-    // TODO check there are features to close.
-    this.version.minor()
     let finishedFeature = this.develop.features.shift()
     this.develop.merge(finishedFeature, backpull)
-    finishedFeature.merge(this.develop, {tag: this.version.curr(), displayTagBox: false})
+    finishedFeature.merge(this.develop, {tag: this.version.build(), displayTagBox: false})
   }
 
   startRelease() {
@@ -412,7 +431,7 @@ class master {
   }
 
   acceptRelease() {
-    this.develop.release.merge(this.own, {displayTagBox: true, tag: this.version.curr()})
+    this.develop.release.merge(this.own, {displayTagBox: true, tag: this.version.prod()})
     this.develop.release = null;
     this.own.merge(this.develop, backpull)
   }
@@ -462,11 +481,41 @@ class GMFlow {
   }
 }
 
+// TODO must start production as soon as you accept a release for versioning consistency.
+// TODO create hotfix branch. Needs to reference version relatively......
+// TODO update to not use 'class' and rather set prototype to GitFlow branches.
+
 let flow = new GMFlow()
 flow.startFeature()
 flow.startFeature()
+flow.closeFeature()
 flow.startFeature()
 flow.closeFeature()
+flow.closeFeature()
+flow.startRelease()
+flow.startFeature()
+flow.startFeature()
+flow.acceptRelease()
+flow.startProduction()
+flow.closeFeature()
+flow.startFeature()
+flow.closeFeature()
+flow.startFeature()
+flow.closeFeature()
+flow.closeFeature()
+flow.startRelease()
+flow.acceptRelease()
+flow.startProduction()
+flow.startFeature()
+flow.startFeature()
+flow.closeFeature()
+flow.startFeature()
+flow.startFeature()
+flow.startFeature()
+flow.closeFeature()
+flow.closeFeature()
+flow.closeFeature()
+flow.startFeature()
 flow.closeFeature()
 flow.closeFeature()
 flow.startRelease()
@@ -476,31 +525,19 @@ flow.startFeature()
 flow.startFeature()
 flow.closeFeature()
 flow.closeFeature()
+flow.startFeature()
+flow.startFeature()
+flow.closeFeature()
+flow.startFeature()
+flow.closeFeature()
+flow.closeFeature()
 flow.startRelease()
+flow.startFeature()
+flow.startFeature()
 flow.acceptRelease()
 flow.startProduction()
 flow.scheduleMajorRelease()
-flow.startFeature()
-flow.startFeature()
-flow.closeFeature()
-flow.startRelease()
-flow.acceptRelease()
-flow.startFeature()
-flow.startFeature()
-flow.startFeature()
 flow.closeFeature()
 flow.closeFeature()
-flow.startFeature()
-flow.startFeature()
-flow.closeFeature()
-flow.startFeature()
-flow.closeFeature()
-flow.closeFeature()
-flow.closeFeature()
-flow.closeFeature()
-flow.startRelease()
-flow.acceptRelease()
-flow.startProduction()
-flow.scheduleMajorRelease()
 flow.startFeature()
 flow.closeFeature()
